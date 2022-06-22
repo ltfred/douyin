@@ -230,9 +230,16 @@ func Do(url string, path string) {
 }
 
 func parseImages(data interface{}, dir string, path string) {
+	err := os.MkdirAll(path+"/"+dir, os.ModePerm)
+	if err != nil {
+		fmt.Println(err)
+	}
 	d := data.([]interface{})
+	wg := sync.WaitGroup{}
+	wg.Add(len(d))
 	for i, v := range d {
 		go func(v interface{}, i int) {
+			defer wg.Done()
 			urlList := v.(map[string]interface{})["url_list"]
 			u := strings.TrimRight(fmt.Sprintf("%s", urlList), "]")
 			u = strings.TrimLeft(u, "[")
@@ -248,6 +255,7 @@ func parseImages(data interface{}, dir string, path string) {
 			_, _ = io.Copy(file, response.Body)
 		}(v, i)
 	}
+	wg.Wait()
 }
 
 func parseVideo(result Data, path string) {
