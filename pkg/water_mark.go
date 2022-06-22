@@ -16,10 +16,13 @@ func WaterMark(url string, path string) {
 	urls := strings.Split(url, ",")
 	wg := sync.WaitGroup{}
 	wg.Add(len(urls))
+	limit := make(chan struct{}, 10)
 	for i := range urls {
+		limit <- struct{}{}
 		go func(url string) {
 			defer wg.Done()
 			Do(url, path)
+			<-limit
 		}(urls[i])
 	}
 	wg.Wait()
