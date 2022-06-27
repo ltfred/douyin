@@ -1,8 +1,4 @@
 # douyin
 
-抖音视频去水印，支持图集，gui
+抖音视频去水印下载，支持图集，gui
 ![](https://github.com/ltfred/douyin/blob/master/image/Snipaste_2022-06-20_15-33-23.png)
-
-## TODO
-- []下载提示
-- []错误提示
