@@ -10,14 +10,25 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+
+	"fyne.io/fyne/v2/widget"
 )
 
-func WaterMark(url string, path string) {
+func WaterMark(url string, path string, status *widget.Label) {
 	urls := strings.Split(url, ",")
+	if len(urls) == 1 && urls[0] == "" {
+		status.SetText("Please enter the video url.")
+		return
+	}
+	if path == "" {
+		status.SetText("Please select folder.")
+		return
+	}
 	wg := sync.WaitGroup{}
 	wg.Add(len(urls))
 	limit := make(chan struct{}, 10)
 	for i := range urls {
+		status.SetText("Downloading......")
 		limit <- struct{}{}
 		go func(url string) {
 			defer wg.Done()
@@ -26,6 +37,7 @@ func WaterMark(url string, path string) {
 		}(urls[i])
 	}
 	wg.Wait()
+	status.SetText("Download complete.")
 }
 
 type Data struct {
