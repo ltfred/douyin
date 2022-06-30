@@ -1,10 +1,12 @@
 package pkg
 
 import (
+	"douyin-gui/constant"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"regexp"
@@ -192,12 +194,15 @@ type Data struct {
 	} `json:"-"`
 }
 
-func DoRequest(url string) (*http.Response, error) {
-	request, _ := http.NewRequest("GET", url, nil)
-	request.Header.Set("user-agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36 Edg/97.0.1072.69")
+func DoRequest(videoID string) (*http.Response, error) {
+	request, _ := http.NewRequest("GET", constant.DYUrl, nil)
+	request.Header.Set("user-agent", constant.UserAgent)
+	q := request.URL.Query()
+	q.Add("item_ids", videoID)
+	request.URL.RawQuery = q.Encode()
 	resp, err := http.DefaultClient.Do(request)
 	if err != nil {
-		fmt.Printf("err: %v", err)
+		log.Fatalf("Request Error: %v", err)
 		return nil, err
 	}
 	return resp, nil
@@ -206,45 +211,44 @@ func DoRequest(url string) (*http.Response, error) {
 func Do(url string, path string) {
 	res, err := http.Get(url)
 	if err != nil {
-		fmt.Printf("err: %v", err)
+		log.Fatalf("Request DouYin Video Url Error: %v", err)
 		return
 	}
 	r := regexp.MustCompile("\\d+")
 	all := r.FindAll([]byte(res.Request.URL.Path), 1)
 	if len(all) == 0 {
-		fmt.Println("输入的地址有误")
+		log.Fatal("Wrong Url")
 		return
 	}
-	videoID := string(all[0])
-	resp1, err := DoRequest("https://www.iesdouyin.com/web/api/v2/aweme/iteminfo/?item_ids=" + videoID)
+	resp1, err := DoRequest(string(all[0]))
 	if err != nil {
-		fmt.Printf("err: %v", err)
 		return
 	}
 	defer resp1.Body.Close()
 	body, err := ioutil.ReadAll(resp1.Body)
 	if err != nil {
-		fmt.Printf("err: %v", err)
+		log.Fatalf("Read Boby Error: %v", err)
 		return
 	}
 	var result Data
 	err = json.Unmarshal(body, &result)
 	if err != nil {
-		fmt.Printf("err: %v", err)
+		log.Fatalf("Unmarshal Error: %v", err)
 		return
 	}
-	// 图集
+	// images
 	if result.ItemList[0].Images != nil {
 		parseImages(result.ItemList[0].Images, result.ItemList[0].Desc, path)
 		return
 	}
+	// video
 	parseVideo(result, path)
 }
 
 func parseImages(data interface{}, dir string, path string) {
 	err := os.MkdirAll(path+"/"+dir, os.ModePerm)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalf("Create Folder Error: %v", err)
 	}
 	d := data.([]interface{})
 	wg := sync.WaitGroup{}
@@ -258,7 +262,6 @@ func parseImages(data interface{}, dir string, path string) {
 			urls := strings.Split(u, " ")
 			response, err := DoRequest(urls[0])
 			if err != nil {
-				fmt.Printf("err: %v", err)
 				return
 			}
 			defer response.Body.Close()
@@ -275,7 +278,6 @@ func parseVideo(result Data, path string) {
 	videoUrl := strings.Replace(videoUrlWm, "playwm", "play", 1)
 	resp2, err := DoRequest(videoUrl)
 	if err != nil {
-		fmt.Printf("err: %v", err)
 		return
 	}
 	defer resp2.Body.Close()
